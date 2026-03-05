@@ -374,7 +374,7 @@ async function submitResponse(){
     showScreen('screen-thanks');
   }catch(err){
     btn.disabled=false;btn.textContent='Submit →';
-    alert('Submission failed — check your connection and try again.');
+    alert('Error: ' + err.message + '\n\nCode: ' + (err.code||'none'));
   }
 }
 </script>
