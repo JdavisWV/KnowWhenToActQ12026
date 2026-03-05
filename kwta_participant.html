@@ -333,12 +333,13 @@ function goTo(id){showScreen(id);}
 
 window.addEventListener('load',()=>{
   const p=new URLSearchParams(window.location.search);
-  const code=p.get('session');
+  const raw=p.get('session')||p.get('SESSION')||'';
+  const code=raw.replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,6);
   if(code){sessionCode=code.toUpperCase();startForm();}
   else showScreen('screen-session');
 });
 
-function joinSession(){const v=document.getElementById('code-input').value.trim().toUpperCase();if(!v)return;sessionCode=v;startForm();}
+function joinSession(){const v=document.getElementById('code-input').value.trim().replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,6);if(!v)return;sessionCode=v;startForm();}
 document.getElementById('code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinSession();});
 
 function startForm(){
