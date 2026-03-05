@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Know When to Act — WorldVue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#032254;--surface:#041e45;--surface2:#062b60;--border:#0d3a7a;--primary:#0149cf;--primary-dim:rgba(1,73,207,0.18);--orange:#ff8000;--orange-dim:rgba(255,128,0,0.14);--orange-line:rgba(255,128,0,0.4);--sky:#47c5fa;--sky-dim:rgba(71,197,250,0.12);--text:#ffffff;--text-soft:#c8d8f0;--muted:#6b8ab5;--green:#2ecc87;--green-dim:rgba(46,204,135,0.12);--red:#ff5252}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity 0.35s ease}
+.slide.active{opacity:1;pointer-events:all}
+.progress-bar{height:3px;background:var(--border);position:fixed;top:0;left:0;right:0;z-index:150}
+.progress-fill{height:100%;background:var(--orange);transition:width 0.4s ease}
+.sticky-rule{position:fixed;top:0;left:0;right:0;background:var(--orange);color:#fff;text-align:center;padding:10px 20px;font-size:13px;font-weight:700;letter-spacing:0.5px;z-index:200;transform:translateY(-100%);transition:transform 0.3s}
+.sticky-rule.show{transform:translateY(0)}
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(3,34,84,0.97);border-top:1px solid var(--border);z-index:100;backdrop-filter:blur(8px)}
+.nav-dots{display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:all 0.2s}
+.dot.active{background:var(--orange);width:24px;border-radius:4px}
+.dot:hover:not(.active){background:var(--muted)}
+.nav-btn{background:none;border:1px solid var(--border);color:var(--text-soft);padding:9px 22px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.nav-btn:hover{border-color:var(--sky);color:var(--sky);background:var(--sky-dim)}
+.nav-btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.nav-btn.primary:hover{background:#ff9a2e}
+.nav-label{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0.5px}
+.content-slide{flex:1;overflow-y:auto;padding:44px 64px 88px}
+.content-slide::-webkit-scrollbar{width:4px}
+.content-slide::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.slide-header{margin-bottom:32px}
+.eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--orange);font-weight:700;margin-bottom:10px}
+.slide-header h2{font-family:'DM Serif Display',serif;font-size:clamp(26px,3.5vw,46px);line-height:1.15}
+.slide-header .desc{font-size:15px;color:var(--text-soft);margin-top:8px;font-weight:300;max-width:660px;line-height:1.65}
+.title-slide{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
+.title-slide::before{content:'';position:absolute;top:-120px;right:-120px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(1,73,207,0.18) 0%,transparent 65%)}
+.title-slide::after{content:'';position:absolute;bottom:-80px;left:-80px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(255,128,0,0.12) 0%,transparent 65%)}
+.title-accent{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--orange))}
+.title-content{text-align:center;position:relative;z-index:1;padding:40px}
+.title-eyebrow{font-size:11px;letter-spacing:3.5px;text-transform:uppercase;color:var(--sky);font-weight:700;margin-bottom:28px}
+.title-h1{font-family:'DM Serif Display',serif;font-size:clamp(56px,8vw,104px);line-height:1.0;margin-bottom:22px}
+.title-h1 em{font-style:italic;color:var(--orange)}
+.title-sub{font-size:clamp(15px,1.8vw,19px);color:var(--text-soft);font-weight:300;max-width:520px;margin:0 auto 44px;line-height:1.65}
+.title-pills{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.pill{padding:8px 20px;border:1px solid rgba(71,197,250,0.3);border-radius:100px;font-size:13px;font-weight:500;color:var(--sky)}
+.section-slide{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--primary) 0%,#0136a0 100%)}
+.section-num{font-family:'DM Serif Display',serif;font-size:220px;color:rgba(255,255,255,0.06);position:absolute;right:-10px;bottom:-50px;line-height:1;pointer-events:none}
+.section-top-bar{position:absolute;top:0;left:0;right:0;height:4px;background:var(--orange)}
+.section-content{text-align:center;position:relative;z-index:1;padding:40px}
+.section-tag{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--sky);font-weight:700;margin-bottom:18px}
+.section-title{font-family:'DM Serif Display',serif;font-size:clamp(38px,5.5vw,68px);line-height:1.08;margin-bottom:16px}
+.section-desc{font-size:18px;color:rgba(255,255,255,0.72);font-weight:300;max-width:460px;margin:0 auto;line-height:1.6}
+.time-badge{display:inline-flex;align-items:center;gap:8px;margin-top:30px;padding:10px 22px;background:rgba(255,128,0,0.2);border:1px solid rgba(255,128,0,0.5);border-radius:100px;font-size:14px;font-weight:700;color:var(--orange)}
+.rule-callout{background:linear-gradient(135deg,rgba(1,73,207,0.2),rgba(255,128,0,0.08));border:1px solid var(--orange-line);border-radius:14px;padding:28px 36px;margin-top:24px;position:relative;overflow:hidden}
+.rule-callout::before{content:'"';font-family:'DM Serif Display',serif;font-size:130px;color:rgba(255,128,0,0.1);position:absolute;top:-24px;left:18px;line-height:1}
+.rule-callout p{font-size:clamp(16px,2vw,21px);font-weight:500;line-height:1.65;position:relative;z-index:1}
+.rule-callout strong{color:var(--orange)}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cmp-col{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px}
+.cmp-col.bad{border-top:4px solid var(--red)}.cmp-col.good{border-top:4px solid var(--green)}
+.cmp-label{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px}
+.cmp-col.bad .cmp-label{color:var(--red)}.cmp-col.good .cmp-label{color:var(--green)}
+.cmp-item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;line-height:1.6;color:var(--text-soft)}
+.cmp-item:last-child{border-bottom:none;padding-bottom:0}
+.cmp-icon{flex-shrink:0;font-weight:800;font-size:14px;margin-top:3px}
+.cmp-col.bad .cmp-icon{color:var(--red)}.cmp-col.good .cmp-icon{color:var(--green)}
+.pyramid-slide{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:20px 20px 80px;gap:48px}
+.pyramid-wrap{flex-shrink:0}
+.pyr-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--sky);font-weight:700;margin-bottom:6px;text-align:center}
+.pyr-header-title{font-family:'DM Serif Display',serif;font-size:clamp(22px,2.8vw,36px);margin-bottom:20px;line-height:1.15;text-align:center}
+.pyramid-details{display:flex;flex-direction:column;gap:14px;flex:1;max-width:420px}
+.pyr-detail{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:flex-start;gap:16px;transition:transform 0.2s}
+.pyr-detail:hover{transform:translateX(4px)}
+.pyr-detail.e{border-left:4px solid var(--sky)}.pyr-detail.i{border-left:4px solid var(--orange)}.pyr-detail.s{border-left:4px solid var(--green)}
+.pyr-shape{font-size:22px;flex-shrink:0;margin-top:2px}
+.pyr-title{font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.pyr-detail.e .pyr-title{color:var(--sky)}.pyr-detail.i .pyr-title{color:var(--orange)}.pyr-detail.s .pyr-title{color:var(--green)}
+.pyr-subtitle{font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600}
+.pyr-ask{font-size:13px;color:var(--text-soft);font-style:italic;margin-bottom:6px;line-height:1.6}
+.pyr-action{font-size:12px;font-weight:600}
+.pyr-detail.e .pyr-action{color:var(--sky)}.pyr-detail.i .pyr-action{color:var(--orange)}.pyr-detail.s .pyr-action{color:var(--green)}
+.opening-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.opening-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px}
+.oc-icon{font-size:30px;margin-bottom:12px}.oc-title{font-size:14px;font-weight:700;margin-bottom:6px}
+.oc-desc{font-size:13px;color:var(--text-soft);line-height:1.6}
+.scenario-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.sc-tab{padding:7px 16px;background:var(--surface);border:1px solid var(--border);border-radius:100px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.sc-tab:hover{border-color:var(--orange);color:var(--orange)}
+.sc-tab.active{background:var(--orange);border-color:var(--orange);color:#fff}
+.sc-panel{display:none}
+.sc-panel.active{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.sc-card-p{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:30px;display:flex;flex-direction:column}
+.sc-badge{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--sky);margin-bottom:12px}
+.sc-card-p h3{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:16px;line-height:1.2}
+.sc-body{font-size:15px;color:var(--text-soft);line-height:1.8}
+.placement-section{margin-top:24px;padding-top:22px;border-top:1px solid var(--border)}
+.placement-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.placement-btns{display:flex;gap:10px}
+.pb{flex:1;padding:14px 8px;text-align:center;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
+.pb .pb-icon{font-size:20px;display:block;margin-bottom:6px}
+.pb .pb-word{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.pb .pb-q{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4;font-style:italic}
+.pb.e{border-color:rgba(71,197,250,0.25)}.pb.e .pb-word{color:var(--sky)}
+.pb.e:hover,.pb.e.chosen{border-color:var(--sky);background:var(--sky-dim)}
+.pb.i{border-color:rgba(255,128,0,0.25)}.pb.i .pb-word{color:var(--orange)}
+.pb.i:hover,.pb.i.chosen{border-color:var(--orange);background:var(--orange-dim)}
+.pb.s{border-color:rgba(46,204,135,0.25)}.pb.s .pb-word{color:var(--green)}
+.pb.s:hover,.pb.s.chosen{border-color:var(--green);background:var(--green-dim)}
+.sc-prompts{display:flex;flex-direction:column;gap:10px}
+.prompts-header{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.disc-prompt{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:flex-start;gap:12px;transition:border-color 0.2s,background 0.2s;cursor:default}
+.disc-prompt:hover{border-color:var(--primary);background:var(--primary-dim)}
+.dp-num{width:26px;height:26px;background:var(--primary-dim);border:1px solid rgba(1,73,207,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--sky);flex-shrink:0}
+.dp-text{font-size:13px;color:var(--text-soft);line-height:1.65;padding-top:3px}
+.dp-text strong{color:var(--text);font-weight:600}
+.group-banner{background:linear-gradient(135deg,var(--primary),#0136a0);border-radius:12px;padding:18px 24px;margin-bottom:22px;display:flex;align-items:center;gap:16px}
+.gb-icon{font-size:26px;flex-shrink:0}
+.gb-text{font-size:14px;line-height:1.6;color:rgba(255,255,255,0.9)}
+.gb-text strong{color:#fff}
+.reflect-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+.reflect-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:26px}
+.reflect-num{width:30px;height:30px;background:var(--orange-dim);border:1px solid var(--orange-line);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--orange);margin-bottom:14px}
+.reflect-q{font-size:15px;font-weight:500;line-height:1.6;margin-bottom:8px}
+.reflect-hint{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5}
+.pattern-row{display:flex;gap:12px;margin-top:20px}
+.pattern-btn{flex:1;padding:18px 14px;background:var(--surface);border:2px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif}
+.pattern-btn:hover{border-color:var(--orange)}
+.pattern-btn.selected{border-color:var(--orange);background:var(--orange-dim)}
+.p-icon{font-size:26px;margin-bottom:8px;display:block}
+.p-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.p-desc{font-size:11px;color:var(--muted);line-height:1.4}
+.commit-container{max-width:700px;margin:0 auto;padding:10px}
+.commit-header{text-align:center;margin-bottom:32px}
+.commit-header h2{font-family:'DM Serif Display',serif;font-size:clamp(30px,4vw,50px);margin-bottom:8px}
+.commit-header p{font-size:16px;color:var(--text-soft)}
+.fill-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:26px 30px;margin-bottom:14px}
+.fill-label{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--orange);margin-bottom:14px}
+.fill-sentence{font-size:clamp(15px,1.8vw,18px);line-height:2.1}
+.fill-blank{display:inline-block;border-bottom:2px solid var(--orange);min-width:160px;margin:0 5px;vertical-align:bottom;background:transparent;color:var(--orange);font-family:'DM Sans',sans-serif;font-size:inherit;font-weight:600;outline:none;border-top:none;border-left:none;border-right:none;border-radius:0;padding:0 4px;width:200px}
+.fill-blank::placeholder{color:rgba(255,128,0,0.3);font-style:italic}
+.fill-blank:focus{border-bottom-color:var(--sky);color:var(--sky)}
+.three-qs{background:linear-gradient(135deg,var(--primary),#0136a0);border-radius:14px;padding:28px 32px;margin-top:20px;text-align:center}
+.qs-label{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--sky);margin-bottom:22px}
+.qs-row{display:flex;align-items:stretch;justify-content:center;flex-wrap:wrap}
+.q-item{padding:16px 28px;text-align:center;flex:1;min-width:180px}
+.q-item+.q-item{border-left:1px solid rgba(71,197,250,0.25)}
+.q-arrow{font-size:26px;margin-bottom:10px;display:block;color:var(--orange)}
+.q-text{font-size:15px;font-weight:700;line-height:1.4}
+.q-hint{font-size:12px;color:rgba(255,255,255,0.55);margin-top:5px}
+
+/* ── FIREBASE LIVE PANEL ── */
+.fb-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:22px}
+.fb-panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.fb-panel-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sky)}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2ecc87;margin-right:6px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-label{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#2ecc87;display:flex;align-items:center}
+
+/* session setup box */
+.sbox{background:linear-gradient(135deg,rgba(1,73,207,.25),rgba(3,34,84,.8));border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:18px}
+.sbox-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.sbox-left .sbox-label{font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);font-weight:700;margin-bottom:4px}
+.sbox-code{font-family:'DM Sans',sans-serif;font-size:2rem;font-weight:700;color:var(--sky);letter-spacing:.2em;line-height:1}
+.sbox-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.new-sess-btn{background:none;border:1px solid rgba(255,255,255,.2);border-radius:6px;color:rgba(255,255,255,.5);font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.new-sess-btn:hover{color:var(--orange);border-color:var(--orange)}
+.sbox-url{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:#fff;font-size:.8rem;padding:8px 10px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:10px}
+.sbox-url:focus{border-color:rgba(255,255,255,.3)}.sbox-url::placeholder{color:rgba(255,255,255,.28);font-size:.75rem}
+.qr-row{display:flex;gap:14px;align-items:flex-start}
+#qr-el{background:#fff;padding:5px;border-radius:6px;flex-shrink:0}
+#qr-el img,#qr-el canvas{display:block!important}
+.qr-info-lbl{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);font-weight:700;margin-bottom:5px}
+.qr-url{font-size:.68rem;color:var(--sky);word-break:break-all;line-height:1.4;margin-bottom:7px}
+.copy-btn{background:rgba(71,197,250,.1);border:1px solid rgba(71,197,250,.25);border-radius:5px;color:var(--sky);font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;cursor:pointer}
+.copy-btn:hover{background:rgba(71,197,250,.2)}
+.sbox-hint{font-size:.68rem;color:rgba(255,255,255,.28);font-style:italic;margin-top:8px;line-height:1.4}
+#qr-area{display:none}
+
+/* vote bars */
+.sc-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.sc-live-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.slc-num{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.slc-name{font-size:.78rem;font-weight:600;color:var(--text-soft);margin-bottom:10px}
+.vote-bars{display:flex;flex-direction:column;gap:5px}
+.vb-row{display:flex;align-items:center;gap:8px}
+.vb-label{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;min-width:56px}
+.vb-label.e{color:var(--sky)}.vb-label.i{color:var(--orange)}.vb-label.s{color:var(--green)}
+.vb-bg{flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.vb-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.vb-fill.e{background:var(--sky)}.vb-fill.i{background:var(--orange)}.vb-fill.s{background:var(--green)}
+.vb-count{font-size:.68rem;color:var(--muted);min-width:18px;text-align:right}
+
+/* pattern bars */
+.pattern-live{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.plc{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.plc-icon{font-size:1.4rem;margin-bottom:6px}
+.plc-name{font-size:.78rem;font-weight:600;color:var(--text-soft);margin-bottom:8px}
+.plc-bar-bg{height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.plc-bar-fill{height:100%;background:var(--orange);border-radius:4px;transition:width .4s ease}
+.plc-count{font-size:.68rem;color:var(--muted)}
+
+.responses-count{font-size:.72rem;color:var(--muted);font-weight:500}
+.empty-hint{font-size:.8rem;color:var(--muted);font-style:italic;text-align:center;padding:16px 0}
+
+@media(max-width:900px){.compare-grid,.reflect-grid,.sc-panel.active,.pyramid-slide{grid-template-columns:1fr;flex-direction:column}.pattern-row,.placement-btns{flex-direction:column}.pyramid-slide{flex-direction:column;padding:16px 16px 88px}.content-slide{padding:24px 24px 88px}.opening-grid{grid-template-columns:1fr}.q-item+.q-item{border-left:none;border-top:1px solid rgba(71,197,250,0.25)}.sc-live-grid{grid-template-columns:1fr 1fr}.pattern-live{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+<div class="sticky-rule" id="stickyRule">🔺 Escalate &nbsp;·&nbsp; ◆ Involve &nbsp;·&nbsp; ■ Solve — Which level does this belong at?</div>
+
+<!-- SLIDE 1: TITLE -->
+<div class="slide active" id="slide-0">
+  <div class="title-slide">
+    <div class="title-accent"></div>
+    <div class="title-content">
+      <div class="title-eyebrow">WorldVue · Company-Wide Training</div>
+      <h1 class="title-h1">Know When<br>to <em>Act</em></h1>
+      <p class="title-sub">A shared standard for solving, involving, and escalating — so the right things happen at the right time.</p>
+      <div class="title-pills">
+        <div class="pill">⏱ 60 Minutes</div>
+        <div class="pill">👥 Small Groups</div>
+        <div class="pill">🏢 All Employees</div>
+        <div class="pill">💬 Discussion-Based</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 2: SEGMENT 1 -->
+<div class="slide" id="slide-1">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 1 of 6</div>
+      <h2 class="section-title">The Real Cost<br>of Getting It Wrong</h2>
+      <p class="section-desc">Not bad intentions — just the absence of a shared standard.</p>
+      <div class="time-badge">⏱ 8 minutes</div>
+    </div>
+    <div class="section-num">1</div>
+  </div>
+</div>
+
+<!-- SLIDE 3: OPENING -->
+<div class="slide" id="slide-2">
+  <div class="content-slide">
+    <div class="slide-header">
+      <div class="eyebrow">Opening Discussion</div>
+      <h2>"Without naming names —"</h2>
+      <p class="desc">What does it look like in your day when escalation goes wrong?</p>
+    </div>
+    <div class="opening-grid">
+      <div class="opening-card"><div class="oc-icon">🏃</div><div class="oc-title">Escalated Too Fast</div><div class="oc-desc">Problem dropped on someone else before any attempt was made</div></div>
+      <div class="opening-card"><div class="oc-icon">⏳</div><div class="oc-title">Held Too Long</div><div class="oc-desc">Problem sat until the damage was done — found out too late</div></div>
+      <div class="opening-card"><div class="oc-icon">🏓</div><div class="oc-title">No One Owns It</div><div class="oc-desc">Keeps getting forwarded — nobody drives it to resolution</div></div>
+    </div>
+    <div class="rule-callout">
+      <p>There was a moment — usually early — where someone had to decide: <strong>Do I handle this? Pull someone in? Or escalate?</strong> Most of the time that decision didn't go well. Not because people don't care. Because there's no shared standard.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: SEGMENT 2 -->
+<div class="slide" id="slide-3">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 2 of 6</div>
+      <h2 class="section-title">The Escalation<br>Pyramid</h2>
+      <p class="section-desc">Three levels. One question at each. Run it before you act.</p>
+      <div class="time-badge">⏱ 10 minutes</div>
+    </div>
+    <div class="section-num">2</div>
+  </div>
+</div>
+
+<!-- SLIDE 5: PYRAMID -->
+<div class="slide" id="slide-4">
+  <div class="pyramid-slide">
+    <div class="pyramid-wrap">
+      <div class="pyr-eyebrow">WorldVue · Escalation Framework</div>
+      <div class="pyr-header-title">The Escalation Pyramid</div>
+      <svg viewBox="0 0 340 320" width="340" height="320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="gs"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="go"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gg"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <polygon points="170,18 268,108 72,108" fill="rgba(71,197,250,0.15)" stroke="#47c5fa" stroke-width="2" filter="url(#gs)"/>
+        <polygon points="170,30 255,104 85,104" fill="rgba(71,197,250,0.07)"/>
+        <text x="170" y="58" text-anchor="middle" font-family="DM Sans" font-size="22" fill="#47c5fa">▲</text>
+        <text x="170" y="82" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="13" fill="#ffffff" letter-spacing="2">ESCALATE</text>
+        <text x="170" y="98" text-anchor="middle" font-family="DM Sans" font-size="9" fill="rgba(71,197,250,0.8)" letter-spacing="1">HIGH RISK · HIGH IMPACT</text>
+        <polygon points="72,116 268,116 300,206 40,206" fill="rgba(255,128,0,0.12)" stroke="#ff8000" stroke-width="2" filter="url(#go)"/>
+        <polygon points="80,120 260,120 290,202 50,202" fill="rgba(255,128,0,0.05)"/>
+        <text x="170" y="152" text-anchor="middle" font-family="DM Sans" font-size="18" fill="#ff8000">◆</text>
+        <text x="170" y="174" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="13" fill="#ffffff" letter-spacing="2">INVOLVE</text>
+        <text x="170" y="192" text-anchor="middle" font-family="DM Sans" font-size="9" fill="rgba(255,128,0,0.8)" letter-spacing="1">STAY IN THE DRIVER'S SEAT</text>
+        <polygon points="40,214 300,214 330,304 10,304" fill="rgba(46,204,135,0.10)" stroke="#2ecc87" stroke-width="2" filter="url(#gg)"/>
+        <polygon points="48,218 292,218 318,300 22,300" fill="rgba(46,204,135,0.04)"/>
+        <text x="170" y="248" text-anchor="middle" font-family="DM Sans" font-size="16" fill="#2ecc87">■</text>
+        <text x="170" y="270" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="13" fill="#ffffff" letter-spacing="2">SOLVE</text>
+        <text x="170" y="288" text-anchor="middle" font-family="DM Sans" font-size="9" fill="rgba(46,204,135,0.8)" letter-spacing="0.5">YOU HAVE WHAT YOU NEED · ACT</text>
+        <line x1="72" y1="110" x2="268" y2="110" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+        <line x1="40" y1="208" x2="300" y2="208" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="pyramid-details">
+      <div class="pyr-detail e"><div class="pyr-shape">▲</div><div><div class="pyr-title">Escalate</div><div class="pyr-subtitle">High risk · Real blocker · Urgent action needed</div><div class="pyr-ask">Ask: What's the risk of waiting?</div><div class="pyr-action">↳ Bring context + a recommendation</div></div></div>
+      <div class="pyr-detail i"><div class="pyr-shape">◆</div><div><div class="pyr-title">Involve</div><div class="pyr-subtitle">Need input or alignment · You own the outcome</div><div class="pyr-ask">Ask: Am I genuinely blocked?</div><div class="pyr-action">↳ Stay in the driver's seat</div></div></div>
+      <div class="pyr-detail s"><div class="pyr-shape">■</div><div><div class="pyr-title">Solve</div><div class="pyr-subtitle">You have the info and the means · Act first</div><div class="pyr-ask">Ask: Have I tried?</div><div class="pyr-action">↳ Attempt before escalating</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: SEGMENT 3 -->
+<div class="slide" id="slide-5">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 3 of 6</div>
+      <h2 class="section-title">What Good<br>Looks Like</h2>
+      <p class="section-desc">Strong execution isn't mystery — it's pattern recognition.</p>
+      <div class="time-badge">⏱ 8 minutes</div>
+    </div>
+    <div class="section-num">3</div>
+  </div>
+</div>
+
+<!-- SLIDE 7: COMPARE -->
+<div class="slide" id="slide-6">
+  <div class="content-slide">
+    <div class="slide-header">
+      <div class="eyebrow">Segment 3 · What Good Looks Like</div>
+      <h2>Strong vs. Weak Execution</h2>
+      <p class="desc">These aren't personality traits. They're behaviors. Behaviors can be changed with a standard.</p>
+    </div>
+    <div class="compare-grid">
+      <div class="cmp-col bad">
+        <div class="cmp-label">Weak Escalation</div>
+        <div class="cmp-item"><span class="cmp-icon">✗</span><span>Escalating without attempting anything first — dropping it up</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✗</span><span>No context — just forwarding the problem with no framing</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✗</span><span>CCing leadership on every thread to avoid accountability</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✗</span><span>Holding too long and letting a problem become a crisis</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✗</span><span>Escalating to avoid a hard conversation with a peer</span></div>
+      </div>
+      <div class="cmp-col good">
+        <div class="cmp-label">Strong Escalation</div>
+        <div class="cmp-item"><span class="cmp-icon">✓</span><span>Showing what you tried before asking for help</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✓</span><span>Framing the risk clearly: "If this isn't resolved by X, here's the impact"</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✓</span><span>Going to the right person directly, not broadcasting</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✓</span><span>Naming the risk: "If we don't act today, here's what the client experiences"</span></div>
+        <div class="cmp-item"><span class="cmp-icon">✓</span><span>Following up in writing after a verbal escalation so there's a record</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8: SEGMENT 4 -->
+<div class="slide" id="slide-7">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 4 of 6</div>
+      <h2 class="section-title">Discussion<br>Scenarios</h2>
+      <p class="section-desc">No obvious right answers — only better and worse reasoning.</p>
+      <div class="time-badge">⏱ 18 minutes</div>
+    </div>
+    <div class="section-num">4</div>
+  </div>
+</div>
+
+<!-- SLIDE 9: SCENARIOS + LIVE RESULTS -->
+<div class="slide" id="slide-8">
+  <div class="content-slide">
+    <!-- SESSION SETUP -->
+    <div class="sbox">
+      <div class="sbox-top">
+        <div class="sbox-left">
+          <div class="sbox-label">Session Code</div>
+          <div class="sbox-code" id="sbox-code">—</div>
+        </div>
+        <div class="sbox-right">
+          <button class="new-sess-btn" onclick="newSession()">New Session</button>
+          <div class="live-label"><span class="live-dot"></span>Live</div>
+        </div>
+      </div>
+      <input class="sbox-url" id="sbox-url" placeholder="Paste your hosted URL to show QR code (e.g. https://jdaviswv.github.io/ChangeByDesignQ12026)" oninput="updateQR()"/>
+      <div id="qr-area">
+        <div class="qr-row">
+          <div id="qr-el"></div>
+          <div>
+            <div class="qr-info-lbl">Participant Link</div>
+            <div class="qr-url" id="qr-url-text"></div>
+            <button class="copy-btn" onclick="copyUrl()">Copy Link</button>
+          </div>
+        </div>
+        <div class="sbox-hint">In-person: scan QR &nbsp;·&nbsp; Remote: paste link in Zoom/Teams chat</div>
+      </div>
+    </div>
+
+    <!-- LIVE VOTES PANEL -->
+    <div class="fb-panel">
+      <div class="fb-panel-hdr">
+        <div class="fb-panel-title">Live Scenario Votes</div>
+        <div class="responses-count" id="resp-count">0 responses</div>
+      </div>
+      <div class="sc-live-grid" id="sc-live-grid">
+        <div class="empty-hint" style="grid-column:1/-1">Waiting for submissions…</div>
+      </div>
+    </div>
+
+    <!-- DISCUSSION CONTENT -->
+    <div class="slide-header" style="margin-bottom:16px">
+      <div class="eyebrow">Small Group Discussion</div>
+      <h2>Where Does This Belong on the Pyramid?</h2>
+      <p class="desc">Work through the prompts with your group. Select your placement, defend your reasoning — then share back in 90 seconds.</p>
+    </div>
+    <div class="group-banner">
+      <div class="gb-icon">💬</div>
+      <div class="gb-text"><strong>Your task:</strong> Read the scenario together. Discuss the prompts in order. Select where it belongs on the pyramid — then be ready to explain <em>why</em>, not just what.</div>
+    </div>
+    <div class="scenario-tabs">
+      <button class="sc-tab active" onclick="showScenario('s1',this)">1 · The Pushback Thread</button>
+      <button class="sc-tab" onclick="showScenario('s2',this)">2 · The Judgment Call</button>
+      <button class="sc-tab" onclick="showScenario('s3',this)">3 · The Manager Loop-In</button>
+      <button class="sc-tab" onclick="showScenario('s4',this)">4 · The Big Chain</button>
+      <button class="sc-tab" onclick="showScenario('s5',this)">5 · The Early Concern</button>
+      <button class="sc-tab" onclick="showScenario('s6',this)">6 · The Real Blocker</button>
+    </div>
+    <div class="sc-panel active" id="sc-s1">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 1</div><h3>The Pushback Thread</h3><div class="sc-body">You respond to a peer about a client issue. They disagree publicly in the email thread and question your approach.<br><br>It's not urgent. It's not high risk. But the disagreement is visible — and your instinct is to add your manager "for visibility."</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s1')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s1')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s1')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">What problem are you <strong>actually trying to solve</strong> by adding your manager?</div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">Is this <strong>conflict resolution</strong> — or escalation?</div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">What <strong>risk</strong> are you trying to avoid here?</div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">What's the <strong>smallest responsible action</strong> you could take?</div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">Would <strong>everyone at WorldVue</strong> answer this the same way — and what does that tell you?</div></div></div>
+    </div>
+    <div class="sc-panel" id="sc-s2">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 2</div><h3>The Judgment Call</h3><div class="sc-body">You are asked to make a decision that falls within your responsibility. You have documentation. You understand the context.<br><br>There are two reasonable approaches. If you make the call and it's wrong, it will be visible. If you escalate, you remove that exposure.</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s2')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s2')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s2')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">What level of <strong>risk belongs at your level?</strong></div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">When does <strong>escalation become dependency?</strong></div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">How does making decisions <strong>build or reduce trust</strong> over time?</div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">What's the <strong>cost of escalating</strong> this?</div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">What's the <strong>cost of solving</strong> it yourself?</div></div></div>
+    </div>
+    <div class="sc-panel" id="sc-s3">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 3</div><h3>The Manager Loop-In</h3><div class="sc-body">A peer forwards a problem to you and your manager at the same time.<br><br>You could solve it. Your manager hasn't responded yet.</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s3')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s3')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s3')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">Does the <strong>CC change your responsibility?</strong></div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">If you respond first, what <strong>message does that send?</strong></div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">If you wait, what <strong>risk are you accepting?</strong></div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">How should <strong>ownership be clarified</strong> in this moment?</div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">Does your manager's presence <strong>change what you should do</strong> — or only how it feels?</div></div></div>
+    </div>
+    <div class="sc-panel" id="sc-s4">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 4</div><h3>The Big Chain</h3><div class="sc-body">An issue gets sent to a large email chain. Eight people are included. No one explicitly owns the next step.<br><br>Silence follows.</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s4')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s4')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s4')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">What happens <strong>psychologically</strong> when many people are on a thread?</div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">Why does <strong>ownership disappear</strong> in large groups?</div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">What would <strong>strong ownership</strong> look like here — specifically?</div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">Is stepping up on this thread <strong>solving, involving, or escalating?</strong></div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">What's the <strong>cost of being the person</strong> who takes ownership here?</div></div></div>
+    </div>
+    <div class="sc-panel" id="sc-s5">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 5</div><h3>The Early Concern</h3><div class="sc-body">You notice something trending poorly. It's not urgent. You're not fully certain it will become a problem.<br><br>Escalating now could create noise. Waiting could create impact.</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s5')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s5')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s5')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">What <strong>signals should trigger</strong> Involve — before something is urgent?</div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">What's the difference between being <strong>cautious and being proactive?</strong></div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">When does <strong>Solve become Involve?</strong></div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">How do you evaluate <strong>"risk of waiting"</strong> in a gray situation?</div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">What would you <strong>regret more</strong> — raising it early or waiting too long?</div></div></div>
+    </div>
+    <div class="sc-panel" id="sc-s6">
+      <div class="sc-card-p"><div class="sc-badge">Scenario 6</div><h3>The Real Blocker</h3><div class="sc-body">You've tried the documented steps. You've confirmed the issue. You're blocked by system access or a decision that belongs to someone else.<br><br>A client is waiting.</div><div class="placement-section"><div class="placement-label">Where does this belong on the pyramid?</div><div class="placement-btns"><div class="pb e" onclick="choosePlacement(this,'sc-s6')"><span class="pb-icon">▲</span><span class="pb-word">Escalate</span><div class="pb-q">Risk of waiting?</div></div><div class="pb i" onclick="choosePlacement(this,'sc-s6')"><span class="pb-icon">◆</span><span class="pb-word">Involve</span><div class="pb-q">Am I blocked?</div></div><div class="pb s" onclick="choosePlacement(this,'sc-s6')"><span class="pb-icon">■</span><span class="pb-word">Solve</span><div class="pb-q">Have I tried?</div></div></div></div></div>
+      <div class="sc-prompts"><div class="prompts-header">Discussion Prompts</div><div class="disc-prompt"><div class="dp-num">1</div><div class="dp-text">What makes this <strong>different from the other scenarios?</strong></div></div><div class="disc-prompt"><div class="dp-num">2</div><div class="dp-text">What <strong>context must you bring</strong> when you escalate this?</div></div><div class="disc-prompt"><div class="dp-num">3</div><div class="dp-text">What would <strong>weak escalation</strong> look like here?</div></div><div class="disc-prompt"><div class="dp-num">4</div><div class="dp-text">What would <strong>strong escalation</strong> look like?</div></div><div class="disc-prompt"><div class="dp-num">5</div><div class="dp-text">What do you tell the <strong>client while you wait?</strong></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: SEGMENT 5 -->
+<div class="slide" id="slide-9">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 5 of 6</div>
+      <h2 class="section-title">Your Default<br>Pattern</h2>
+      <p class="section-desc">Most of us have one. Seeing it is step one.</p>
+      <div class="time-badge">⏱ 8 minutes</div>
+    </div>
+    <div class="section-num">5</div>
+  </div>
+</div>
+
+<!-- SLIDE 11: REFLECTION + LIVE PATTERNS -->
+<div class="slide" id="slide-10">
+  <div class="content-slide">
+    <div class="slide-header">
+      <div class="eyebrow">Individual Reflection — 5 Min</div>
+      <h2>Which One Is You?</h2>
+      <p class="desc">Answer honestly in your workbook. These aren't character flaws — they're habits. Habits change when you name them.</p>
+    </div>
+
+    <!-- LIVE PATTERN RESULTS -->
+    <div class="fb-panel">
+      <div class="fb-panel-hdr">
+        <div class="fb-panel-title">Live — Default Patterns Across the Room</div>
+        <div class="responses-count" id="pattern-resp-count">0 responses</div>
+      </div>
+      <div class="pattern-live" id="pattern-live-grid">
+        <div class="empty-hint" style="grid-column:1/-1">Waiting for submissions…</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;">My default tendency is —</div>
+      <div class="pattern-row">
+        <div class="pattern-btn" onclick="selectPattern(this)"><span class="p-icon">🏃</span><div class="p-title">Escalate Too Early</div><div class="p-desc">Sitting with uncertainty feels uncomfortable</div></div>
+        <div class="pattern-btn" onclick="selectPattern(this)"><span class="p-icon">🧱</span><div class="p-title">Hold Too Long</div><div class="p-desc">Don't want to look like I can't handle it</div></div>
+        <div class="pattern-btn" onclick="selectPattern(this)"><span class="p-icon">💨</span><div class="p-title">Escalate Without Context</div><div class="p-desc">Moving fast, don't think about what others need</div></div>
+        <div class="pattern-btn" onclick="selectPattern(this)"><span class="p-icon">⚖️</span><div class="p-title">Generally Balanced</div><div class="p-desc">I tend to read situations well</div></div>
+      </div>
+    </div>
+    <div class="reflect-grid">
+      <div class="reflect-card"><div class="reflect-num">1</div><div class="reflect-q">A recent situation where I can see this pattern:</div><div class="reflect-hint">What happened? What did you do? What was the outcome?</div></div>
+      <div class="reflect-card"><div class="reflect-num">2</div><div class="reflect-q">The person who felt the impact of my default:</div><div class="reflect-hint">Manager? Teammate? Client? Who paid the cost?</div></div>
+      <div class="reflect-card"><div class="reflect-num">3</div><div class="reflect-q">What I would do differently if that situation happened today:</div><div class="reflect-hint">Specifically — what's the first action that changes?</div></div>
+      <div class="reflect-card" style="background:var(--orange-dim);border-color:var(--orange-line);"><div class="reflect-num">💡</div><div class="reflect-q" style="color:var(--orange);">The signal I'll use to catch myself next time:</div><div class="reflect-hint" style="color:rgba(255,128,0,0.65);">What does the moment feel like right before you default? Name it.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: SEGMENT 6 -->
+<div class="slide" id="slide-11">
+  <div class="section-slide">
+    <div class="section-top-bar"></div>
+    <div class="section-content">
+      <div class="section-tag">Segment 6 of 6</div>
+      <h2 class="section-title">Commit<br>+ Close</h2>
+      <p class="section-desc">An intention without a signal is just a wish.</p>
+      <div class="time-badge">⏱ 8 minutes</div>
+    </div>
+    <div class="section-num">6</div>
+  </div>
+</div>
+
+<!-- SLIDE 13: COMMITMENT -->
+<div class="slide" id="slide-12">
+  <div class="content-slide">
+    <div class="commit-container">
+      <div class="commit-header">
+        <h2>My Escalation Commitment</h2>
+        <p>Fill this in. Write it in your workbook. Mean it.</p>
+      </div>
+      <div class="fill-block">
+        <div class="fill-label">Statement 1</div>
+        <div class="fill-sentence">The next time I feel the urge to <input class="fill-blank" type="text" placeholder="describe your default pattern"/>, I will instead <input class="fill-blank" type="text" placeholder="name the new behavior"/>.</div>
+      </div>
+      <div class="fill-block">
+        <div class="fill-label">Statement 2</div>
+        <div class="fill-sentence">I'll know I'm doing it better when <input class="fill-blank" style="width:270px" type="text" placeholder="name a concrete, observable signal"/>.</div>
+      </div>
+      <div class="three-qs">
+        <div class="qs-label">The Pyramid — Take It With You</div>
+        <div class="qs-row">
+          <div class="q-item"><span class="q-arrow">▲</span><div class="q-text">Escalate</div><div class="q-hint">What's the risk of waiting?</div></div>
+          <div class="q-item"><span class="q-arrow">◆</span><div class="q-text">Involve</div><div class="q-hint">Am I genuinely blocked?</div></div>
+          <div class="q-item"><span class="q-arrow">■</span><div class="q-text">Solve</div><div class="q-hint">Have I actually tried?</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn" onclick="navigate(-1)" id="prevBtn">← Back</button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+    <div class="nav-dots" id="navDots"></div>
+    <div class="nav-label" id="slideLabel">Introduction</div>
+  </div>
+  <button class="nav-btn primary" onclick="navigate(1)" id="nextBtn">Next →</button>
+</div>
+
+<script>
+// ── FIREBASE ──────────────────────────────
+const firebaseConfig={apiKey:"AIzaSyDE9rQd5Rxwj0PnXYLyA-a-ZkPK_KRqBpo",authDomain:"know-when-to-act.firebaseapp.com",databaseURL:"https://know-when-to-act-default-rtdb.firebaseio.com",projectId:"know-when-to-act",storageBucket:"know-when-to-act.firebasestorage.app",messagingSenderId:"137829143048",appId:"1:137829143048:web:6fa891888e72dce777b7bd"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ── NAV ───────────────────────────────────
+const slides=document.querySelectorAll('.slide');
+const totalSlides=slides.length;
+let current=0;
+const slideLabels=['Welcome','Segment 1 · Opening','Opening Discussion','Segment 2 · The Pyramid','The Escalation Pyramid','Segment 3 · What Good Looks Like','Strong vs. Weak Execution','Segment 4 · Scenarios','Group Discussion','Segment 5 · Your Pattern','Reflection','Segment 6 · Commit + Close','My Commitment'];
+const stickySlides=[4,6,8,10,12];
+function buildDots(){const c=document.getElementById('navDots');c.innerHTML='';for(let i=0;i<totalSlides;i++){const d=document.createElement('div');d.className='dot'+(i===current?' active':'');d.onclick=()=>goTo(i);c.appendChild(d);}}
+function goTo(i){slides[current].classList.remove('active');current=Math.max(0,Math.min(i,totalSlides-1));slides[current].classList.add('active');buildDots();document.getElementById('progress').style.width=((current+1)/totalSlides*100)+'%';const rule=document.getElementById('stickyRule');stickySlides.includes(current)?rule.classList.add('show'):rule.classList.remove('show');document.getElementById('prevBtn').disabled=current===0;document.getElementById('nextBtn').disabled=current===totalSlides-1;document.getElementById('slideLabel').textContent=slideLabels[current]||'';}
+function navigate(dir){goTo(current+dir);}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight'||e.key==='ArrowDown')navigate(1);if(e.key==='ArrowLeft'||e.key==='ArrowUp')navigate(-1);});
+function showScenario(id,btn){document.querySelectorAll('.sc-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.sc-tab').forEach(t=>t.classList.remove('active'));document.getElementById('sc-'+id).classList.add('active');btn.classList.add('active');}
+function choosePlacement(btn,panelId){document.querySelectorAll('#'+panelId+' .pb').forEach(b=>b.classList.remove('chosen'));btn.classList.add('chosen');}
+function selectPattern(btn){document.querySelectorAll('.pattern-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');}
+buildDots();
+document.getElementById('progress').style.width=(1/totalSlides*100)+'%';
+
+// ── SESSION ───────────────────────────────
+let sessionCode='',fbListener=null,responses=[],currentShareUrl='';
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='WV';for(let i=0;i<2;i++)s+=c[Math.floor(Math.random()*c.length)];return s;}
+function initSession(){
+  sessionCode=genCode();
+  document.getElementById('sbox-code').textContent=sessionCode;
+  if(fbListener){db.ref('kwta/'+sessionCode+'/responses').off('value',fbListener);fbListener=null;}
+  responses=[];
+  fbListener=db.ref('kwta/'+sessionCode+'/responses').on('value',snap=>{
+    responses=[];
+    if(snap.exists())snap.forEach(c=>{responses.push(c.val());});
+    renderScenarioVotes();
+    renderPatternVotes();
+  });
+  const existing=document.getElementById('sbox-url').value.trim();
+  if(existing)updateQR();
+}
+function newSession(){if(confirm('Start a new session? Current submissions will clear.')){initSession();}}
+initSession();
+
+function updateQR(){
+  const base=document.getElementById('sbox-url').value.trim();
+  const area=document.getElementById('qr-area');
+  if(!base){area.style.display='none';return;}
+  const url=base.replace(/\/+$/,'')+'/kwta_participant.html?session='+sessionCode;
+  currentShareUrl=url;
+  document.getElementById('qr-url-text').textContent=url;
+  area.style.display='block';
+  const el=document.getElementById('qr-el');el.innerHTML='';
+  new QRCode(el,{text:url,width:110,height:110,colorDark:'#032254',colorLight:'#ffffff'});
+}
+function copyUrl(){if(!currentShareUrl)return;navigator.clipboard.writeText(currentShareUrl).then(()=>{const b=document.querySelector('.copy-btn');b.textContent='Copied!';setTimeout(()=>b.textContent='Copy Link',2000);});}
+
+// ── SCENARIO VOTE RENDER ──────────────────
+const SCENARIOS=[{key:'s1',name:'The Pushback Thread'},{key:'s2',name:'The Judgment Call'},{key:'s3',name:'The Manager Loop-In'},{key:'s4',name:'The Big Chain'},{key:'s5',name:'The Early Concern'},{key:'s6',name:'The Real Blocker'}];
+function renderScenarioVotes(){
+  const grid=document.getElementById('sc-live-grid');
+  const count=document.getElementById('resp-count');
+  count.textContent=responses.length+' response'+(responses.length!==1?'s':'');
+  if(!responses.length){grid.innerHTML='<div class="empty-hint" style="grid-column:1/-1">Waiting for submissions…</div>';return;}
+  grid.innerHTML=SCENARIOS.map(sc=>{
+    const e=responses.filter(r=>r[sc.key]==='e').length;
+    const i=responses.filter(r=>r[sc.key]==='i').length;
+    const s=responses.filter(r=>r[sc.key]==='s').length;
+    const tot=responses.filter(r=>r[sc.key]&&r[sc.key]!=='none').length||1;
+    return`<div class="sc-live-card">
+      <div class="slc-num">Scenario ${sc.key.replace('s','')}</div>
+      <div class="slc-name">${sc.name}</div>
+      <div class="vote-bars">
+        <div class="vb-row"><span class="vb-label e">▲ Escalate</span><div class="vb-bg"><div class="vb-fill e" style="width:${Math.round(e/tot*100)}%"></div></div><span class="vb-count">${e}</span></div>
+        <div class="vb-row"><span class="vb-label i">◆ Involve</span><div class="vb-bg"><div class="vb-fill i" style="width:${Math.round(i/tot*100)}%"></div></div><span class="vb-count">${i}</span></div>
+        <div class="vb-row"><span class="vb-label s">■ Solve</span><div class="vb-bg"><div class="vb-fill s" style="width:${Math.round(s/tot*100)}%"></div></div><span class="vb-count">${s}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PATTERN RENDER ────────────────────────
+const PATTERNS=[{key:'early',icon:'🏃',name:'Escalate Too Early'},{key:'long',icon:'🧱',name:'Hold Too Long'},{key:'context',icon:'💨',name:'Escalate Without Context'},{key:'balanced',icon:'⚖️',name:'Generally Balanced'}];
+function renderPatternVotes(){
+  const grid=document.getElementById('pattern-live-grid');
+  const count=document.getElementById('pattern-resp-count');
+  const patResponses=responses.filter(r=>r.pattern&&r.pattern!=='none');
+  count.textContent=patResponses.length+' response'+(patResponses.length!==1?'s':'');
+  if(!patResponses.length){grid.innerHTML='<div class="empty-hint" style="grid-column:1/-1">Waiting for submissions…</div>';return;}
+  const tot=patResponses.length||1;
+  grid.innerHTML=PATTERNS.map(p=>{
+    const n=patResponses.filter(r=>r.pattern===p.key).length;
+    const pct=Math.round(n/tot*100);
+    return`<div class="plc">
+      <div class="plc-icon">${p.icon}</div>
+      <div class="plc-name">${p.name}</div>
+      <div class="plc-bar-bg"><div class="plc-bar-fill" style="width:${pct}%"></div></div>
+      <div class="plc-count">${n} (${pct}%)</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
