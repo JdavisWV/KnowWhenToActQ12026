@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Know When to Act — WorldVue</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;font-family:'Barlow',sans-serif;background:#032254;color:#fff;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.wv-header{background:#0149cf;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.wv-logo{background:#ff8000;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;padding:4px 10px;border-radius:2px}
+.wv-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.center-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px}
+.center-screen h2{font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;text-align:center;margin-bottom:10px}
+.center-screen p{color:rgba(255,255,255,.55);text-align:center;font-size:.95rem;font-weight:300;margin-bottom:36px;line-height:1.6;max-width:280px}
+.code-input{width:100%;max-width:260px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);border-radius:12px;color:#fff;font-size:2rem;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:.25em;text-transform:uppercase;text-align:center;padding:16px;outline:none;margin-bottom:16px;transition:border-color .2s}
+.code-input:focus{border-color:#47c5fa}
+.code-input::placeholder{font-size:1rem;color:rgba(255,255,255,.25);letter-spacing:.1em}
+.primary-btn{background:#ff8000;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;margin-top:8px}
+.primary-btn:active{opacity:.8}
+
+/* FORM */
+.form-scroll{flex:1;overflow-y:auto;padding:20px 20px 100px}
+.session-badge{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;margin-bottom:22px}
+.sb-label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);font-weight:700}
+.sb-code{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:#47c5fa;letter-spacing:.12em}
+.field-label{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.45);margin-bottom:8px;display:block}
+.name-field{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.14);border-radius:10px;color:#fff;font-size:1.05rem;padding:14px 16px;font-family:'Barlow',sans-serif;outline:none;margin-bottom:28px}
+.name-field:focus{border-color:#47c5fa}
+.name-field::placeholder{color:rgba(255,255,255,.28)}
+
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.section-sub{font-size:.8rem;color:rgba(255,255,255,.4);font-weight:300;margin-bottom:16px;line-height:1.5}
+
+/* SCENARIO CARDS */
+.sc-block{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.09);border-radius:12px;padding:16px;margin-bottom:12px}
+.sc-num{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#47c5fa;font-weight:700;margin-bottom:5px}
+.sc-name{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:10px}
+.vote-row{display:flex;gap:8px}
+.vote-btn{flex:1;padding:10px 6px;background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.1);border-radius:10px;text-align:center;cursor:pointer;transition:all .15s;font-family:'Barlow',sans-serif}
+.vote-btn:active{transform:scale(.97)}
+.vote-btn .vb-icon{font-size:1.3rem;display:block;margin-bottom:4px}
+.vote-btn .vb-word{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.vote-btn.e{border-color:rgba(71,197,250,.25)}.vote-btn.e .vb-word{color:#47c5fa}
+.vote-btn.e.chosen{border-color:#47c5fa;background:rgba(71,197,250,.15)}
+.vote-btn.i{border-color:rgba(255,128,0,.25)}.vote-btn.i .vb-word{color:#ff8000}
+.vote-btn.i.chosen{border-color:#ff8000;background:rgba(255,128,0,.15)}
+.vote-btn.s{border-color:rgba(46,204,135,.25)}.vote-btn.s .vb-word{color:#2ecc87}
+.vote-btn.s.chosen{border-color:#2ecc87;background:rgba(46,204,135,.15)}
+
+/* PATTERN */
+.pattern-block{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.09);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .15s;text-align:left;width:100%;font-family:'Barlow',sans-serif}
+.pattern-block:active{transform:scale(.98)}
+.pattern-block.chosen{border-color:#ff8000;background:rgba(255,128,0,.12)}
+.pb-icon{font-size:1.6rem;margin-bottom:6px;display:block}
+.pb-title{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:3px}
+.pb-desc{font-size:.78rem;color:rgba(255,255,255,.45);line-height:1.4}
+
+.divider{height:1px;background:rgba(255,255,255,.08);margin:20px 0}
+
+.submit-btn{width:100%;background:#0149cf;color:#fff;border:none;border-radius:12px;padding:18px;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;margin-top:8px}
+.submit-btn:disabled{opacity:.3;cursor:default}
+
+/* THANKS */
+.thanks-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center}
+.check-circle{width:72px;height:72px;border-radius:50%;background:rgba(46,204,113,.15);border:2px solid #2ecc71;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 24px}
+.thanks-body h2{font-family:'Barlow Condensed',sans-serif;font-size:2.2rem;font-weight:800;margin-bottom:12px}
+.thanks-body p{color:rgba(255,255,255,.55);font-size:.95rem;font-weight:300;line-height:1.65;max-width:280px}
+.thanks-code{color:#47c5fa;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: SESSION CODE -->
+<div class="screen" id="screen-session">
+  <div class="wv-header"><div class="wv-logo">WorldVue</div><div class="wv-title">Know When to Act</div></div>
+  <div class="center-screen">
+    <h2>Enter Session Code</h2>
+    <p>Your facilitator has a session code on screen. Enter it below to join.</p>
+    <input class="code-input" id="code-input" placeholder="e.g. WV7K" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false"/>
+    <button class="primary-btn" onclick="joinSession()">Join Session</button>
+  </div>
+</div>
+
+<!-- SCREEN 2: FORM -->
+<div class="screen" id="screen-form">
+  <div class="wv-header"><div class="wv-logo">WorldVue</div><div class="wv-title">Know When to Act</div></div>
+  <div class="form-scroll">
+    <div class="session-badge"><span class="sb-label">Session</span><span class="sb-code" id="form-code">—</span></div>
+
+    <label class="field-label">Your Name or Role (optional)</label>
+    <input class="name-field" id="name-field" type="text" placeholder="e.g. Account Manager" autocomplete="off"/>
+
+    <div class="section-title">Scenario Placements</div>
+    <div class="section-sub">For each scenario, pick where it belongs on the Escalation Pyramid.</div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 1</div>
+      <div class="sc-name">The Pushback Thread</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s1','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s1','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s1','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 2</div>
+      <div class="sc-name">The Judgment Call</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s2','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s2','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s2','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 3</div>
+      <div class="sc-name">The Manager Loop-In</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s3','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s3','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s3','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 4</div>
+      <div class="sc-name">The Big Chain</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s4','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s4','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s4','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 5</div>
+      <div class="sc-name">The Early Concern</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s5','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s5','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s5','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="sc-block">
+      <div class="sc-num">Scenario 6</div>
+      <div class="sc-name">The Real Blocker</div>
+      <div class="vote-row">
+        <div class="vote-btn e" onclick="vote('s6','e',this)"><span class="vb-icon">▲</span><span class="vb-word">Escalate</span></div>
+        <div class="vote-btn i" onclick="vote('s6','i',this)"><span class="vb-icon">◆</span><span class="vb-word">Involve</span></div>
+        <div class="vote-btn s" onclick="vote('s6','s',this)"><span class="vb-icon">■</span><span class="vb-word">Solve</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">My Default Pattern</div>
+    <div class="section-sub">Pick the one that most honestly describes your tendency.</div>
+
+    <button class="pattern-block" onclick="pickPattern('early',this)"><span class="pb-icon">🏃</span><div class="pb-title">Escalate Too Early</div><div class="pb-desc">Sitting with uncertainty feels uncomfortable</div></button>
+    <button class="pattern-block" onclick="pickPattern('long',this)"><span class="pb-icon">🧱</span><div class="pb-title">Hold Too Long</div><div class="pb-desc">Don't want to look like I can't handle it</div></button>
+    <button class="pattern-block" onclick="pickPattern('context',this)"><span class="pb-icon">💨</span><div class="pb-title">Escalate Without Context</div><div class="pb-desc">Moving fast, don't think about what others need</div></button>
+    <button class="pattern-block" onclick="pickPattern('balanced',this)"><span class="pb-icon">⚖️</span><div class="pb-title">Generally Balanced</div><div class="pb-desc">I tend to read situations well</div></button>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitResponse()">Submit My Responses</button>
+  </div>
+</div>
+
+<!-- SCREEN 3: THANKS -->
+<div class="screen" id="screen-thanks">
+  <div class="wv-header"><div class="wv-logo">WorldVue</div><div class="wv-title">Know When to Act</div></div>
+  <div class="thanks-body">
+    <div class="check-circle">✓</div>
+    <h2>Submitted!</h2>
+    <p>Your responses are live in session <span class="thanks-code" id="thanks-code">—</span>.<br><br>Watch the results appear on the facilitator's screen.</p>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyDE9rQd5Rxwj0PnXYLyA-a-ZkPK_KRqBpo",authDomain:"know-when-to-act.firebaseapp.com",databaseURL:"https://know-when-to-act-default-rtdb.firebaseio.com",projectId:"know-when-to-act",storageBucket:"know-when-to-act.firebasestorage.app",messagingSenderId:"137829143048",appId:"1:137829143048:web:6fa891888e72dce777b7bd"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+let sessionCode='';
+const votes={s1:null,s2:null,s3:null,s4:null,s5:null,s6:null};
+let pattern=null;
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+window.addEventListener('load',()=>{const p=new URLSearchParams(window.location.search);const code=p.get('session');if(code){sessionCode=code.toUpperCase();startForm();}else showScreen('screen-session');});
+function joinSession(){const v=document.getElementById('code-input').value.trim().toUpperCase();if(!v)return;sessionCode=v;startForm();}
+document.getElementById('code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinSession();});
+function startForm(){document.getElementById('form-code').textContent=sessionCode;showScreen('screen-form');}
+
+function vote(scenario,choice,btn){
+  votes[scenario]=choice;
+  btn.closest('.vote-row').querySelectorAll('.vote-btn').forEach(b=>b.classList.remove('chosen'));
+  btn.classList.add('chosen');
+}
+function pickPattern(p,btn){
+  pattern=p;
+  document.querySelectorAll('.pattern-block').forEach(b=>b.classList.remove('chosen'));
+  btn.classList.add('chosen');
+}
+
+async function submitResponse(){
+  const name=document.getElementById('name-field').value.trim()||'Anonymous';
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.textContent='Submitting…';
+  try{
+    await db.ref('kwta/'+sessionCode+'/responses').push({
+      name,
+      s1:votes.s1||'none',s2:votes.s2||'none',s3:votes.s3||'none',
+      s4:votes.s4||'none',s5:votes.s5||'none',s6:votes.s6||'none',
+      pattern:pattern||'none',
+      timestamp:Date.now()
+    });
+    document.getElementById('thanks-code').textContent=sessionCode;
+    showScreen('screen-thanks');
+  }catch(err){
+    btn.disabled=false;btn.textContent='Submit My Responses';
+    alert('Submission failed — check your connection and try again.');
+  }
+}
+</script>
+</body>
+</html>
