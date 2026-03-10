@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%;font-family:'Barlow',sans-serif;background:#032254;color:#fff;overflow-x:hidden}
@@ -321,29 +320,9 @@ html,body{min-height:100%;font-family:'Barlow',sans-serif;background:#032254;col
 </div>
 
 <script>
-// ─── EmailJS Configuration ───────────────────────────────────────────────────
-// 1. Sign up free at https://www.emailjs.com
-// 2. Add an Email Service (Gmail works great — Service ID goes in EMAILJS_SERVICE_ID)
-// 3. Create an Email Template using the variables listed below (Template ID goes in EMAILJS_TEMPLATE_ID)
-// 4. Copy your Public Key from Account → API Keys (goes in EMAILJS_PUBLIC_KEY)
-//
-// Required template variables (use these in your EmailJS template):
-//   {{to_email}}     — recipient address
-//   {{session}}      — session code
-//   {{participant}}  — participant name
-//   {{s1}} … {{s6}} — vote for each scenario (Escalate / Involve / Solve / none)
-//   {{pattern}}      — default pattern self-rating
-//   {{submitted_at}} — timestamp
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // e.g. 'service_abc123'
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // e.g. 'template_xyz456'
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // e.g. 'AbCdEfGhIjKlMnOp'
-const RESULTS_EMAIL       = 'jdaviswv@gmail.com';
-// ─────────────────────────────────────────────────────────────────────────────
-
 const firebaseConfig={apiKey:"AIzaSyDE9rQd5Rxwj0PnXYLyA-a-ZkPK_KRqBpo",authDomain:"know-when-to-act.firebaseapp.com",databaseURL:"https://know-when-to-act-default-rtdb.firebaseio.com",projectId:"know-when-to-act",storageBucket:"know-when-to-act.firebasestorage.app",messagingSenderId:"137829143048",appId:"1:137829143048:web:6fa891888e72dce777b7bd"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
-emailjs.init(EMAILJS_PUBLIC_KEY);
 
 let sessionCode='';
 const votes={s1:null,s2:null,s3:null,s4:null,s5:null,s6:null};
@@ -380,9 +359,6 @@ function pickPattern(p,btn){
   btn.classList.add('chosen');
 }
 
-const VOTE_LABEL={e:'Escalate',i:'Involve',s:'Solve',none:'— no vote —'};
-const PATTERN_LABEL={early:'Escalate Too Early',long:'Hold Too Long',context:'Escalate Without Context',balanced:'Generally Balanced',none:'— not answered —'};
-
 async function submitResponse(){
   const name=document.getElementById('name-field').value.trim()||'Anonymous';
   const btn=document.getElementById('submit-btn');
@@ -397,29 +373,10 @@ async function submitResponse(){
     });
     document.getElementById('thanks-code').textContent=sessionCode;
     showScreen('screen-thanks');
-    // Send email results (non-blocking — failure won't affect the participant)
-    sendResultsEmail(name);
   }catch(err){
     btn.disabled=false;btn.textContent='Submit →';
     alert('Error: ' + err.message + '\n\nCode: ' + (err.code||'none'));
   }
-}
-
-function sendResultsEmail(name){
-  if(!EMAILJS_SERVICE_ID||EMAILJS_SERVICE_ID==='YOUR_SERVICE_ID')return; // not configured yet
-  emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,{
-    to_email:    RESULTS_EMAIL,
-    session:     sessionCode,
-    participant: name,
-    s1: VOTE_LABEL[votes.s1||'none'],
-    s2: VOTE_LABEL[votes.s2||'none'],
-    s3: VOTE_LABEL[votes.s3||'none'],
-    s4: VOTE_LABEL[votes.s4||'none'],
-    s5: VOTE_LABEL[votes.s5||'none'],
-    s6: VOTE_LABEL[votes.s6||'none'],
-    pattern:     PATTERN_LABEL[pattern||'none'],
-    submitted_at:new Date().toLocaleString()
-  }).catch(err=>console.warn('EmailJS send failed:',err));
 }
 </script>
 </body>
